@@ -1,5 +1,5 @@
 init:
-  - cmd: SET PATH=C:\Python27;C:\Python27\Scripts;%PATH%
+  - cmd: SET PATH=C:\Python27;C:\Python27\Scripts;C:\python27-x64;%PATH%
 
 install:
   - pip install pyinstaller
