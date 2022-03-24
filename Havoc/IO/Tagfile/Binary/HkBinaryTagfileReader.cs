@@ -11,8 +11,10 @@ using Havoc.Reflection;
 
 namespace Havoc.IO.Tagfile.Binary
 {
-    public class HkBinaryTagfileReader : IDisposable
-    {
+    public class HkBinaryTagfileReader : IDisposable {
+        private readonly string CompendiumPath;
+        private List<ulong> mCompendiumIDs;
+
         private readonly bool mLeaveOpen;
         private readonly BinaryReader mReader;
         private readonly Stream mStream;
@@ -20,8 +22,9 @@ namespace Havoc.IO.Tagfile.Binary
         private List<Item> mItems;
         private List<HkType> mTypes;
 
-        private HkBinaryTagfileReader( Stream stream, bool leaveOpen )
+        private HkBinaryTagfileReader( Stream stream, string compendium, bool leaveOpen )
         {
+            CompendiumPath = compendium;
             mStream = stream;
             mReader = new BinaryReader( mStream, Encoding.UTF8, true );
             mLeaveOpen = leaveOpen;
@@ -40,6 +43,19 @@ namespace Havoc.IO.Tagfile.Binary
             foreach ( var subSection in section.SubSections )
                 switch ( subSection.Signature )
                 {
+                    case "TCRF": {
+                        mStream.Seek( subSection.Position, SeekOrigin.Begin );
+                        var compId = mReader.ReadUInt64();
+                        // Read 8 as Compendium ID
+                        if (CompendiumPath == "") {
+                            throw new InvalidDataException("TCRF found but Compendium is empty");
+                        }
+
+                        if (!mCompendiumIDs.Contains(compId)) {
+                            throw new InvalidDataException($"TCRF ref comp id {compId} but not found");
+                        }
+                        break;
+                    }
                     case "SDKV":
                     {
                         mStream.Seek( subSection.Position, SeekOrigin.Begin );
@@ -55,6 +71,10 @@ namespace Havoc.IO.Tagfile.Binary
                         break;
 
                     case "TYPE":
+                        if (CompendiumPath != "") {
+                            break;
+                            // throw new InvalidDataException("Types found in HKX, but expected to be in Compendium)");
+                        }
                         ReadTypeSection( subSection );
                         break;
 
@@ -74,6 +94,7 @@ namespace Havoc.IO.Tagfile.Binary
                 switch ( subSection.Signature )
                 {
                     case "TCID":
+                        ReadIDsSection( subSection );
                         break;
 
                     case "TYPE":
@@ -83,6 +104,18 @@ namespace Havoc.IO.Tagfile.Binary
                     default:
                         throw new InvalidDataException( $"Unexpected signature: {subSection.Signature}" );
                 }
+        }
+
+        private void ReadIDsSection( HkSection section ) {
+            mCompendiumIDs = new List<ulong>();
+            if (section.Length % 8 != 0) {
+                throw new InvalidDataException($"TCID length {section.Length} can't be mod by 8");
+            }
+
+            mReader.BaseStream.Seek( section.Position, SeekOrigin.Begin );
+            for (int i = 0; i < section.Length / 8; i++) {
+                mCompendiumIDs.Add(mReader.ReadUInt64());
+            }
         }
 
         private void ReadTypeSection( HkSection section )
@@ -114,6 +147,15 @@ namespace Havoc.IO.Tagfile.Binary
                 }
         }
 
+        private void ReadCompendium() {
+            if (CompendiumPath != "") {
+                var compendiums = ReadCompendiums(CompendiumPath);
+                mTypes = compendiums.mTypes;
+                mCompendiumIDs = compendiums.mCompendiumIDs;
+                // mCompendiumIDs.ForEach(Console.WriteLine);
+            }
+        }
+
         private void ReadRootSection()
         {
             var section = new HkSection( mReader );
@@ -132,21 +174,118 @@ namespace Havoc.IO.Tagfile.Binary
             }
         }
 
-        public static IHkObject Read( Stream source, bool leaveOpen = false )
+        public static IHkObject Read( Stream source, string compendium = "", bool leaveOpen = false )
         {
-            using ( var reader = new HkBinaryTagfileReader( source, leaveOpen ) )
+            using ( var reader = new HkBinaryTagfileReader( source, compendium, leaveOpen ) )
             {
                 // stuff
+                reader.ReadCompendium();
                 reader.ReadRootSection();
+                // Console.WriteLine("FoundTypes: " + reader.mTypes.Count);
                 return reader.mItems[ 1 ].Objects[ 0 ];
             }
         }
 
-        public static IHkObject Read( string filePath )
+        public static IHkObject Read( string filePath, string compendium = "" )
         {
             using ( var source = File.OpenRead( filePath ) )
             {
-                return Read( source );
+                return Read( source, compendium );
+            }
+        }
+
+        public static HkBinaryTagfileReader ReadCompendiums( Stream source, bool leaveOpen = false )
+        {
+            using ( var reader = new HkBinaryTagfileReader( source, "", leaveOpen ) )
+            {
+                // stuff
+                reader.ReadRootSection();
+                return reader;
+            }
+        }
+
+        public static HkBinaryTagfileReader ReadCompendiums(string compendium)
+        {
+            using ( var source = File.OpenRead( compendium ) )
+            {
+                return ReadCompendiums( source );
+            }
+        }
+
+        public void BackportTypesTo2012() {
+            void LimitVersion(HkType type, int maxVer) {
+                if (type != null && type.Version > maxVer) {
+                    type.mVersion = maxVer;
+                }
+            }
+
+            foreach (var type in mTypes) {
+                var toRemoveTypes = new string[]
+                {
+                    "hkDefaultPropertyBag",
+                    "hkHash",
+                    "hkTuple",
+                    "hkPropertyId",
+                    "hkPtrAndInt",
+                    "hkPropertyDesc",
+                };
+                mTypes.RemoveAll(x => toRemoveTypes.Contains(x.Name));
+                
+                if (type.Name == "hkReferencedObject") {
+                    LimitVersion(type, 0);
+                    type.mFields.RemoveAll(x => x.Name == "propertyBag");
+                    type.mFields.ForEach(x => {
+                        if (x.Name == "refCount") {
+                            x.Name = "referenceCount";
+                        }
+                    });
+                }
+                
+                if (type.Name == "hkxMeshSection") {
+                    LimitVersion(type, 4);
+                    type.mFields.RemoveAll(x => x.Name == "boneMatrixMap");
+                }
+
+                if (type.Name == "hkxVertexBuffer::VertexData") {
+                    LimitVersion(type, 0);
+                }
+                
+                if (type.Name == "hkxVertexDescription::ElementDecl") {
+                    LimitVersion(type, 3);
+                    type.mFields.RemoveAll(x => x.Name == "channelID");
+                }
+
+                if (type.Name == "hkxMaterial") {
+                    LimitVersion(type, 4);
+                    type.mFields.RemoveAll(x => x.Name == "userData");
+                }
+
+                if (type.Name == "hkaSkeleton") {
+                    LimitVersion(type, 5);
+                }
+
+                if (type.Name == "hkcdStaticMeshTreeBase") {
+                    LimitVersion(type, 0);
+                    type.mFields.RemoveAll(x => x.Name == "primitiveStoresIsFlatConvex");
+                }
+
+                if (type.Name == "hkaInterleavedUncompressedAnimation") {
+                    LimitVersion(type, 0);
+                }
+
+                if (type.Name == "hkpStaticCompoundShape") {
+                    // TODO:
+                    // type.mFields.ForEach(x => {
+                    //     if (x.Name == "numBitsForChildShapeKey") {
+                    //         
+                    //     }
+                    // });
+                }
+
+                if (type.Name == "hkpStaticCompoundShape::Instance") {
+                    LimitVersion(type, 0);
+                }
+
             }
         }
 

@@ -1,4 +1,5 @@
-﻿using System.Xml;
+﻿using System;
+using System.Xml;
 using Havoc.Extensions;
 using Havoc.Reflection;
 
@@ -60,10 +61,15 @@ namespace Havoc.IO.Tagfile.Xml.V3
             writer.WriteEndElement();
         }
 
-        public void WriteAllTypes( XmlWriter writer )
-        {
-            foreach ( var type in TypeCompendium )
+        public void WriteAllTypes( XmlWriter writer ) {
+            var i = 0;
+            // Console.WriteLine("XML: Write types " + TypeCompendium.Count);
+            foreach (var type in TypeCompendium) {
+                
+                // Console.WriteLine($"{i} XML: Write type " + type + $", name: {type.Name}");
+                i++;
                 WriteType( writer, type );
+            }
         }
 
         public string GetTypeIdString( HkType type )

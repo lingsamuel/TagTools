@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using Havoc.Extensions;
 using Havoc.IO.Tagfile.Binary.Sections;
@@ -35,15 +36,19 @@ namespace Havoc.IO.Tagfile.Binary.Types
                     case "TNA1":
                     {
                         int typeCount = ( int ) reader.ReadPackedInt();
-
-                        types = new List<HkType>( typeCount );
+                        
+                        // Console.WriteLine("Got type count " + typeCount);
+                        types = new List<HkType>( typeCount + 1 );
                         for ( int i = 0; i < typeCount; i++ )
                             types.Add( new HkType() );
 
+                        var idx = 1;
                         foreach ( var type in types )
                         {
                             type.Name = typeStrings[ ( int ) reader.ReadPackedInt() ];
 
+                            // Console.WriteLine($"{idx} Read type " + type + $", name: {type.Name}");
+                            idx++;
                             int templateCount = ( int ) reader.ReadPackedInt();
 
                             type.mParameters.Capacity = templateCount;
@@ -68,8 +73,11 @@ namespace Havoc.IO.Tagfile.Binary.Types
 
                     case "FSTR":
                     {
-                        while ( reader.BaseStream.Position < subSection.Position + subSection.Length )
-                            fieldStrings.Add( reader.ReadNullTerminatedString() );
+                        while (reader.BaseStream.Position < subSection.Position + subSection.Length) {
+                            var fieldStr = reader.ReadNullTerminatedString();
+                            fieldStrings.Add( fieldStr );
+                            // Console.WriteLine("field str: " + fieldStr);
+                        }
 
                         break;
                     }
@@ -83,11 +91,15 @@ namespace Havoc.IO.Tagfile.Binary.Types
                             if ( type == null )
                                 continue;
 
+                            // if (type.Name == "hkPropertyId") {
+                            //     Console.WriteLine($"[LoopEnter] Pos {reader.BaseStream.Position}");
+                            // }
                             type.ParentType = ReadTypeIndex();
                             type.Flags = ( HkTypeFlags ) reader.ReadPackedInt();
 
-                            if ( ( type.Flags & HkTypeFlags.HasFormatInfo ) != 0 )
+                            if ((type.Flags & HkTypeFlags.HasFormatInfo) != 0) {
                                 type.mFormatInfo = ( int ) reader.ReadPackedInt();
+                            }
 
                             if ( ( type.Flags & HkTypeFlags.HasSubType ) != 0 )
                                 type.mSubType = ReadTypeIndex();
@@ -106,30 +118,69 @@ namespace Havoc.IO.Tagfile.Binary.Types
 
                             if ( ( type.Flags & HkTypeFlags.HasFields ) != 0 )
                             {
-                                int fieldCount = ( int ) reader.ReadPackedInt();
-
+                                // int fieldCount = ( int ) reader.ReadPackedInt();
+                                var b = (int) reader.ReadByte();
+                                // For "hkPropertyId", the first byte is "C3", weird.
+                                // The full pattern:
+                                // C3 00 01 12 25 00 1A 16 00 2B 08 00 20
+                                // If we ignore "C3 00", everything works like a charm
+                                if (b == 0xC3) {
+                                    b = reader.ReadByte();
+                                    if (b == 0) {
+                                        b = (int) reader.ReadPackedInt();
+                                    }
+                                    // b = (int)reader.ReadPackedInt();
+                                }
+                                int fieldCount = ( int )(b & 0x3F);
+                                // Console.WriteLine($"{type.Name} ({fieldCount})");
                                 type.mFields.Capacity = fieldCount;
-                                for ( int i = 0; i < fieldCount; i++ )
-                                    type.mFields.Add( new HkField
-                                    {
-                                        Name = fieldStrings[ ( int ) reader.ReadPackedInt() ],
-                                        Flags = ( HkFieldFlags ) reader.ReadPackedInt(),
-                                        ByteOffset = ( int ) reader.ReadPackedInt(),
-                                        Type = ReadTypeIndex()
-                                    } );
+                                
+                                for ( int i = 0; i < fieldCount; i++ ) {
+                                    // Console.WriteLine($"    Pos {reader.BaseStream.Position}");
+                                    var nameIdx = (int)reader.ReadPackedInt();
+                                    var flags = (HkFieldFlags)reader.ReadPackedInt();
+                                    var field = new HkField {
+                                        Name = fieldStrings[nameIdx],
+                                        Flags = flags, //(HkFieldFlags)reader.ReadPackedInt(),
+                                        ByteOffset = (int)reader.ReadPackedInt(),
+                                    };
+
+                                    // if (type.Name == "hkPropertyId") {
+                                    //     Console.WriteLine($"    {nameIdx}, {field.ByteOffset}");
+                                    // }
+                                    var fieldTypeIdx = reader.ReadPackedInt();
+                                    field.Type = ReadTypeIndex(fieldTypeIdx);
+                                    type.mFields.Add( field );
+                                    // Console.WriteLine($"READ: {field.Name}, Fields: {fieldCount}, T: {field.Type?.Name} ({fieldTypeIdx})");
+                                    // Console.WriteLine($"    {field.Name}: {field.Type?.Name}, Flags: ({(int)field.Flags}) (offset {field.ByteOffset}) (typeidx: {fieldTypeIdx})");
+                                    // if (type.Name == "hkPropertyId") {
+                                        // Console.WriteLine($"READ: hkPropId: {field.Name}, T idx: ({fieldTypeIdx})");
+                                        // Console.WriteLine($"READ: hkPropId: {field.Name}, T: {field.Type?.Name} ({fieldTypeIdx})");
+                                    // }
+                                    // Console.WriteLine($"    Pos {reader.BaseStream.Position}");
+                                }
                             }
 
                             if ( ( type.Flags & HkTypeFlags.HasInterfaces ) != 0 )
                             {
+                                // Console.WriteLine($"    Pos {reader.BaseStream.Position}");
                                 int interfaceCount = ( int ) reader.ReadPackedInt();
+                                // Console.WriteLine($"{type.Name} ({interfaceCount})");
 
                                 type.mInterfaces.Capacity = interfaceCount;
-                                for ( int i = 0; i < interfaceCount; i++ )
-                                    type.mInterfaces.Add( new HkInterface
-                                    {
+                                for ( int i = 0; i < interfaceCount; i++ ) {
+                                    var itfce = new HkInterface {
                                         Type = ReadTypeIndex(),
-                                        Flags = ( int ) reader.ReadPackedInt()
-                                    } );
+                                        Flags = (int)reader.ReadPackedInt()
+                                    };
+                                    type.mInterfaces.Add( itfce );
+                                    
+                                    // Console.WriteLine($"    [Interface] {itfce.Type.Name}: ({itfce.Flags})");
+                                    // Console.WriteLine($"    Pos {reader.BaseStream.Position}");
+                                }
+                                // if (type.Name == "hkPropertyId") {
+                                // Console.WriteLine($"Pos {reader.BaseStream.Position}");
+                                // }
                             }
                         }
 
@@ -155,9 +206,11 @@ namespace Havoc.IO.Tagfile.Binary.Types
 
             return types;
 
-            HkType ReadTypeIndex()
+            HkType ReadTypeIndex(long index = -1)
             {
-                long index = reader.ReadPackedInt();
+                if (index == -1) {
+                    index = reader.ReadPackedInt();
+                }
                 if ( index == 0 )
                     return null;
 

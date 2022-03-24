@@ -60,6 +60,7 @@ namespace Havoc.IO.Tagfile.Binary
 
                 WriteDataSection();
                 WriteTypeSection();
+                // WriteTCRFSection();
                 WriteIndexSection();
             }
         }

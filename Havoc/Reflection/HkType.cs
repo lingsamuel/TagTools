@@ -1,4 +1,6 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 
 namespace Havoc.Reflection
@@ -44,7 +46,22 @@ namespace Havoc.Reflection
         public bool IsSingle => Format == HkTypeFormat.FloatingPoint && FormatInfo >> 8 == 0x1746;
         public bool IsDouble => Format == HkTypeFormat.FloatingPoint && FormatInfo >> 8 == 0x345E;
 
-        public HkType SubType => ( Flags & HkTypeFlags.HasSubType ) != 0 ? mSubType : ParentType?.SubType;
+        public HkType SubType {
+            get {
+                if ((Flags & HkTypeFlags.HasSubType) != 0) {
+                    return mSubType;
+                } else {
+                    if (ParentType == null) {
+                        return null;
+                    }
+                    if (ParentType == this) {
+                        Console.WriteLine($"parent {ParentType.ToString()} same as this {this.ToString()}");
+                        return ParentType;
+                    }
+                    return ParentType.SubType;
+                }
+            }
+        }
 
         public int Version => ( Flags & HkTypeFlags.HasVersion ) != 0 ? mVersion : ParentType?.Version ?? 0;
 

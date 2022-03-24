@@ -5,13 +5,15 @@ namespace Havoc
 {
     public readonly struct HkSdkVersion
     {
+        public static readonly HkSdkVersion V20120200 = new HkSdkVersion( 2012, 02, 00 );
         public static readonly HkSdkVersion V20150100 = new HkSdkVersion( 2015, 01, 00 );
         public static readonly HkSdkVersion V20160100 = new HkSdkVersion( 2016, 01, 00 );
         public static readonly HkSdkVersion V20160200 = new HkSdkVersion( 2016, 02, 00 );
+        public static readonly HkSdkVersion V20180100 = new HkSdkVersion( 2018, 01, 00 );
 
         public static readonly IReadOnlyCollection<HkSdkVersion> SupportedSdkVersions = new[]
         {
-            V20150100, V20160100, V20160200
+            V20150100, V20160100, V20160200, V20180100
         };
 
         public readonly uint Value;

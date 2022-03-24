@@ -1,4 +1,5 @@
-﻿using System.Collections;
+﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using Havoc.Collections;
 using Havoc.Objects;
@@ -11,6 +12,7 @@ namespace Havoc.Reflection
 
         public HkTypeCompendium( IHkObject obj )
         {
+            // mTypes.Add(new HkType());
             AddRecursively( obj );
         }
 
@@ -91,7 +93,9 @@ namespace Havoc.Reflection
 
                     case HkTypeFormat.Array:
                     {
-                        foreach ( var item in ( IEnumerable<IHkObject> ) obj.Value ) AddRecursively( item );
+                        foreach (var item in (IEnumerable<IHkObject>)obj.Value) {
+                            AddRecursively( item );
+                        }
                         break;
                     }
                 }

@@ -1,4 +1,5 @@
-﻿using System.IO;
+﻿using System;
+using System.IO;
 using System.Linq;
 using Havoc.Collections;
 using Havoc.Extensions;
@@ -44,8 +45,10 @@ namespace Havoc.IO.Tagfile.Binary.Types
                 {
                     writer.WritePackedInt( typeCompendium.Count );
 
-                    foreach ( var type in typeCompendium )
-                    {
+                    var idx = 0;
+                    foreach ( var type in typeCompendium ) {
+                        // Console.WriteLine($"{idx} Writ type " + type + $", name: {type.Name}");
+                        idx++;
                         writer.WritePackedInt( typeStrings.IndexMap[ type.Name ] );
                         writer.WritePackedInt( type.mParameters.Count );
 
@@ -95,14 +98,21 @@ namespace Havoc.IO.Tagfile.Binary.Types
 
                         if ( ( type.Flags & HkTypeFlags.HasFields ) != 0 )
                         {
-                            writer.WritePackedInt( type.mFields.Count );
+                            writer.Write( ( byte ) type.mFields.Count );
 
                             foreach ( var field in type.mFields )
                             {
                                 writer.WritePackedInt( fieldStrings.IndexMap[ field.Name ] );
                                 writer.WritePackedInt( ( long ) field.Flags );
                                 writer.WritePackedInt( field.ByteOffset );
-                                writer.WritePackedInt( GetTypeIndex( field.Type ) );
+
+                                var typeIndex = GetTypeIndex(field.Type);
+                                writer.WritePackedInt( typeIndex );
+                                // Console.WriteLine($"WRIT: {field.Name}, T: {field.Type?.Name} ({typeIndex})");
+
+                                if (type.Name == "hkPropertyId") {
+                                    // Console.WriteLine($"WRIT: hkPropId: {field.Name}, T: {field.Type?.Name}");
+                                }
                             }
                         }
 
