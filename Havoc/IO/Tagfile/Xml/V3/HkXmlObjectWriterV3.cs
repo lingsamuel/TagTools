@@ -79,6 +79,14 @@ namespace Havoc.IO.Tagfile.Xml.V3
                                 ( "hex", $"#{*( ulong* ) &value:X}" ) );
                         }
                     }
+                    else if (obj.Type.IsHalf) {
+                        Half value = obj.GetValue<HkHalf, Half>();
+                        unsafe
+                        {
+                            writer.WriteElement( "real", ( "dec", value.ToString( CultureInfo.InvariantCulture ) ),
+                                ( "hex", $"#{*( ulong* ) &value:X}" ) );
+                        }
+                    }
                     else
                     {
                         throw new InvalidDataException(
@@ -98,10 +106,8 @@ namespace Havoc.IO.Tagfile.Xml.V3
                     writer.WriteStartElement( "record", obj.Type );
                     {
                         foreach ( var (field, fieldObject) in obj
-                            .GetValue<HkClass, IReadOnlyDictionary<HkField, IHkObject>>() )
-                        {
-                            if ( ( field.Flags & HkFieldFlags.IsNotSerializable ) != 0 ||
-                                 !fieldObject.IsWorthWriting() )
+                            .GetValue<HkClass, IReadOnlyDictionary<HkField, IHkObject>>() ) {
+                            if ( ( field.Flags & HkFieldFlags.IsNotSerializable ) != 0 || !fieldObject.IsWorthWriting() )
                                 continue;
 
                             writer.WriteStartElement( "field", ( "name", field.Name ) );

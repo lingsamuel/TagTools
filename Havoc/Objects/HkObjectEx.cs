@@ -44,8 +44,17 @@ namespace Havoc.Objects
                     return !string.IsNullOrEmpty( obj.GetValueOrDefault<HkString, string>() );
 
                 case HkTypeFormat.Int:
+                    return Convert.ToDecimal(obj.Value) != 0;
                 case HkTypeFormat.FloatingPoint:
-                    return Convert.ToDecimal( obj.Value ) != 0;
+                    if (obj.Type.IsHalf) {
+                        return ((Half)obj.Value) != (Half)0;
+                    }
+                    if (obj.Type.IsSingle && (float)obj.Value >= 0xff7fffee) {
+                        // Handle "NaN"
+                        // TODO: support more NaN?
+                        return true;
+                    }
+                    return Convert.ToDecimal(obj.Value) != 0;
 
                 case HkTypeFormat.Ptr:
                     return obj.Value != null;

@@ -9,44 +9,47 @@ namespace Havoc.Cli {
         private static void Read(string path, string compendium = "", string dest = "") {
             var obj = HkBinaryTagfileReader.Read(path, compendium);
             Console.WriteLine("Write xml to " + dest);
-            HkXmlTagfileWriterV3.Instance.Write(dest + ".xml", obj);
+            HkXmlTagfileWriterV3.Instance.Write(dest + ".2016.xml", obj);
 
             Console.WriteLine("Write bin to " + dest);
-            HkBinaryTagfileWriter.Write(dest + ".out", obj, HkSdkVersion.V20160200);
+            HkBinaryTagfileWriter.Write(dest + ".2016.hkx", obj, HkSdkVersion.V20160200);
         }
 
         private static void DMain(string[] args) {
+            Debug.DebugLevel = Debug.DebugInfoType.ReadProcess |
+                               Debug.DebugInfoType.WriteProcess |
+                               Debug.DebugInfoType.TypeDef |
+                               Debug.DebugInfoType.Temporary;
+
             var skeleton =
-                @"D:\Steam\steamapps\common\ELDEN RING\Game\dsanime\c2120-anibnd\GR\data\INTERROOT_win64\chr\c2120\hkx\skeleton.hkx";
-            // var compendium =
-            //     @"D:\Steam\steamapps\common\ELDEN RING\Game\dsanime\c2120-anibnd\GR\data\INTERROOT_win64\chr\c2120\hkx\c7400.compendium";
+                @"D:\Steam\steamapps\common\ELDEN RING\Game\dsanime\c2120-chrbnd\GR\data\INTERROOT_win64\chr\c2120\c2120_c.hkx";
             var compendium = "";
 
-            // var skeleton =
-            //     @"D:\Steam\steamapps\common\ELDEN RING\Game\chr\c2120-anibnd\GR\data\INTERROOT_win64\chr\c2120\hkx\skeleton.hkx";
-            // var compendium =
-            //     @"D:\Steam\steamapps\common\ELDEN RING\Game\chr\c2120_div00-anibnd\GR\data\INTERROOT_win64\chr\c2120\hkx_div00_compendium\c2120_div00.compendium";
-            Read(skeleton, compendium, @"D:\Steam\steamapps\common\ELDEN RING\Game\dsanime\c2120-anibnd\GR\data\INTERROOT_win64\chr\c2120\hkx\" + Path.GetFileName(skeleton));
+            Read(skeleton, compendium,
+                @"D:\Steam\steamapps\common\ELDEN RING\Game\dsanime\output\" + Path.GetFileName(skeleton));
             // Read(skeleton);
         }
 
         private static void Main(string[] args) {
             if (args.Length <= 0) {
-                throw new ArgumentException("Must have at least 1 arg");
+                Console.WriteLine(@"Havoc CLI v0.2.0 -- Read HKX V2018 and convert to V2016
+Usage:
+  Havoc.Cli.exe input             -- read from input path, write in-place 
+  Havoc.Cli.exe input output      -- read from input path, write to output path 
+  Havoc.Cli.exe input type output -- read from input path, take type compendium from type path, write to output path 
+");
+                return;
+                // throw new ArgumentException("Must have at least 1 arg");
             }
 
             string path = args[0], compendium = "", dest = args[0];
-            if (args.Length >= 2) {
+            if (args.Length == 2) {
+                dest = args[1];
+            } else if (args.Length >= 3) {
                 compendium = args[1];
-                if (string.IsNullOrWhiteSpace(compendium)) {
-                    compendium = "";
-                }
-            }
-
-            if (args.Length >= 3) {
                 dest = args[2];
             }
-            
+
             // Console.WriteLine($"Path: {path}, Compendium: {compendium}, Dest: {dest}");
 
             var obj = HkBinaryTagfileReader.Read(path, compendium);

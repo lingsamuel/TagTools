@@ -124,15 +124,20 @@ namespace Havoc.IO.Tagfile.Binary.Types
                                 // The full pattern:
                                 // C3 00 01 12 25 00 1A 16 00 2B 08 00 20
                                 // If we ignore "C3 00", everything works like a charm
+                                if (b > 0xC0) {
+                                    Debug.TypeDef("Type Read: fieldCount > 0xC0");
+                                }
                                 if (b == 0xC3) {
+                                    Debug.TypeDef("Type Read: C3 in fieldCount");
                                     b = reader.ReadByte();
                                     if (b == 0) {
                                         b = (int) reader.ReadPackedInt();
                                     }
                                     // b = (int)reader.ReadPackedInt();
                                 }
+
                                 int fieldCount = ( int )(b & 0x3F);
-                                // Console.WriteLine($"{type.Name} ({fieldCount})");
+                                Debug.TypeDef($"Typedef {type.Name} ({fieldCount})");
                                 type.mFields.Capacity = fieldCount;
                                 
                                 for ( int i = 0; i < fieldCount; i++ ) {
@@ -152,7 +157,11 @@ namespace Havoc.IO.Tagfile.Binary.Types
                                     field.Type = ReadTypeIndex(fieldTypeIdx);
                                     type.mFields.Add( field );
                                     // Console.WriteLine($"READ: {field.Name}, Fields: {fieldCount}, T: {field.Type?.Name} ({fieldTypeIdx})");
-                                    // Console.WriteLine($"    {field.Name}: {field.Type?.Name}, Flags: ({(int)field.Flags}) (offset {field.ByteOffset}) (typeidx: {fieldTypeIdx})");
+                                    Debug.TypeDef($"    {field.Name}: {field.Type?.Name}, Flags: ({(int)field.Flags}) (offset {field.ByteOffset}) (typeidx: {fieldTypeIdx})");
+                                    
+                                    if (i == 0 && field.ByteOffset != 0 && field.ByteOffset % 8 != 0) {
+                                        Debug.TypeDef("WARNING: Type first field offset % 8 != 0");
+                                    }
                                     // if (type.Name == "hkPropertyId") {
                                         // Console.WriteLine($"READ: hkPropId: {field.Name}, T idx: ({fieldTypeIdx})");
                                         // Console.WriteLine($"READ: hkPropId: {field.Name}, T: {field.Type?.Name} ({fieldTypeIdx})");

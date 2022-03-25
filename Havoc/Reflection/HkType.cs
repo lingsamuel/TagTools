@@ -43,6 +43,7 @@ namespace Havoc.Reflection
 
         public int FixedSize => IsFixedSize ? Format == HkTypeFormat.String ? FormatInfo >> 16 : FormatInfo >> 8 : 0;
 
+        public bool IsHalf => Format == HkTypeFormat.FloatingPoint && FormatInfo >> 8 == 0x746;
         public bool IsSingle => Format == HkTypeFormat.FloatingPoint && FormatInfo >> 8 == 0x1746;
         public bool IsDouble => Format == HkTypeFormat.FloatingPoint && FormatInfo >> 8 == 0x345E;
 

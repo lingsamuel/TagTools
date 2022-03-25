@@ -41,6 +41,8 @@ namespace Havoc.IO.Tagfile.Binary
         private void ReadTagSection( HkSection section )
         {
             foreach ( var subSection in section.SubSections )
+            {
+                Debug.ReadProcess("Read section: " + subSection.Signature);
                 switch ( subSection.Signature )
                 {
                     case "TCRF": {
@@ -84,7 +86,7 @@ namespace Havoc.IO.Tagfile.Binary
 
                     default:
                         throw new InvalidDataException( $"Unexpected signature: {subSection.Signature}" );
-                }
+                }}
         }
 
         private void ReadTypeCompendiumSection( HkSection section )
@@ -330,10 +332,20 @@ namespace Havoc.IO.Tagfile.Binary
                     mObjects.Add( ReadObject( Type, Position + i * Type.ByteSize ) );
             }
 
+            private static Dictionary<string, bool> InfoLogged = new();
             private IHkObject ReadObject( HkType type, long offset )
             {
                 mTag.mStream.Seek( offset, SeekOrigin.Begin );
 
+                var info = Convert.ToString(type.FormatInfo, 2).PadLeft(24, '0');
+                if (!InfoLogged.ContainsKey(type.Name + info) && type.FormatInfo > 0b00001000) {
+                    InfoLogged[type.Name + info] = true;
+                    // Debug.Temporary($"Type {type.Name} has format {type.Format} (info: {Convert.ToString(type.FormatInfo, 2)}), flag {type.Flags}");
+                    Debug.TypeDef($"Type {type.Name.PadRight(16, ' ')} {info}");
+                }
+
+                // 
+                
                 switch ( type.Format )
                 {
                     case HkTypeFormat.Void:
@@ -427,11 +439,13 @@ namespace Havoc.IO.Tagfile.Binary
                         }
                     }
 
-                    case HkTypeFormat.FloatingPoint:
-                        return type.IsSingle ? new HkSingle( type, mTag.mReader.ReadSingle() ) :
+                    case HkTypeFormat.FloatingPoint: {
+                        return
+                            type.IsHalf ? new HkHalf(type, mTag.mReader.ReadHalf()) :
+                            type.IsSingle ? new HkSingle( type, mTag.mReader.ReadSingle() ) :
                             type.IsDouble ? ( IHkObject ) new HkDouble( type, mTag.mReader.ReadDouble() ) :
                             throw new InvalidDataException( "Unexpected floating point format" );
-
+                    }
                     case HkTypeFormat.Ptr:
                         return new HkPtr( type, ReadItemIndex()?[ 0 ] );
 

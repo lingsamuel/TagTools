@@ -218,6 +218,9 @@ namespace Havoc.IO.Tagfile.Binary
                     else if ( obj.Type.IsDouble )
                         mWriter.Write( obj.GetValue<HkDouble, double>() );
 
+                    else if ( obj.Type.IsHalf )
+                        mWriter.Write( obj.GetValue<HkHalf, Half>() );
+
                     else
                         throw new InvalidDataException(
                             $"Unexpected floating point format: 0x{obj.Type.FormatInfo:X}" );
