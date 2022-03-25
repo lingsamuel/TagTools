@@ -15,8 +15,11 @@ namespace Havoc.Objects
             return value;
         }
 
-        public static TValueType GetValueOrDefault<TObjectType, TValueType>( this IHkObject obj )
+        public static TValueType GetValueOrDefault<TObjectType, TValueType>( this IHkObject obj ) where TValueType: class
         {
+            if (obj == null || obj.Value == null) {
+                return null;
+            }
             if ( !( obj is TObjectType ) )
                 throw new InvalidDataException( $"Expected HK object to be of {typeof( TObjectType ).Name} type." );
 

@@ -107,6 +107,11 @@ namespace Havoc.IO.Tagfile.Xml.V3
                     {
                         foreach ( var (field, fieldObject) in obj
                             .GetValue<HkClass, IReadOnlyDictionary<HkField, IHkObject>>() ) {
+                            if (obj.Type.Name == "<DEBUG>" && field.Name == "<DEBUG>") {
+                                Debug.WriteProcess($"Write: {obj.Type.Name}.{field.Name}");
+                                Debug.WriteProcess($"  {field.Type.Name}: {fieldObject.Type.Name}({fieldObject.Type.Format}): " +
+                                                   $"{(fieldObject.Value == null? "null": fieldObject.Value.GetType())}");
+                            }
                             if ( ( field.Flags & HkFieldFlags.IsNotSerializable ) != 0 || !fieldObject.IsWorthWriting() )
                                 continue;
 

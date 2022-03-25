@@ -22,7 +22,7 @@ namespace Havoc.Cli {
                                Debug.DebugInfoType.Temporary;
 
             var skeleton =
-                @"D:\Steam\steamapps\common\ELDEN RING\Game\dsanime\c2120-chrbnd\GR\data\INTERROOT_win64\chr\c2120\c2120_c.hkx";
+                @"D:\Steam\steamapps\common\ELDEN RING\Game\dsanime\c2120-behbnd\GR\data\INTERROOT_win64\action\c2120\Export\Behaviors\c9997.hkx";
             var compendium = "";
 
             Read(skeleton, compendium,
