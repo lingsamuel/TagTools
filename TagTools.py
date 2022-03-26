@@ -12,6 +12,29 @@ def debug(*args):
         print(" ".join(map(str, args)))
 
 
+def debugRead(*args):
+    if False:
+        print(" ".join(map(str, args)))
+
+enableDebug = False
+indent = 0
+flagDebugReadObj = True
+def debugReadObj(*args):
+    if enableDebug and flagDebugReadObj:
+        print(" " * indent*2 + " ".join(map(str, args)))
+
+
+def debugWrite(*args):
+    if True:
+        print(" ".join(map(str, args)))
+
+
+flagdebugType = True
+def debugType(*args):
+    if enableDebug and flagdebugType:
+        print(" ".join(map(str, args)))
+
+
 class TagSubType(object):
     Void = 0x0
     Invalid = 0x1
@@ -30,6 +53,7 @@ class TagSubType(object):
     Int16 = 0x4000
     Int32 = 0x8000
     Int64 = 0x10000
+
 
 class TagFlag(object):
     SubType = 0x1
@@ -92,6 +116,11 @@ class TagType(object):
         self.interfaces = []
         self.hsh = 0
         self.tag = None
+
+    def __str__(self):
+        if self.mSubType != None:
+            return self.name + "<" + self.mSubType.name + ">"
+        return self.name
 
     @property
     def superType(self):
@@ -178,6 +207,10 @@ class TagReader(object):
         self.dataOffset = 0
         self.types = []
         self.items = []
+        # Support read from HavocCli
+        # Type -> Index -> Offset to DATA
+        self.patches = {}
+        self.currPatch = {}
         self.ids = []
         self.compendium = compendium
         self.readRootSection()
@@ -219,7 +252,7 @@ class TagReader(object):
 
     def readTypeSection(self):
         with TagSectionReader(self, "TYPE", "TCRF") as t1:
-            debug("=============== " + t1.signature)
+            debugRead("=============== " + t1.signature)
             if (t1.signature == "TCRF"):
                 compendiumId = self.f.read(8)
 
@@ -241,26 +274,32 @@ class TagReader(object):
             with TagSectionReader(self, "TNAM", "TNA1") as t4:
                 debug("=============== " + t4.signature)
                 typeCount = self.readPacked()
-                debug("type count", typeCount)
+                debugType("Typedef count", typeCount)
                 self.types = [TagType() for x in xrange(typeCount + 1)]
                 self.types[0] = None
 
+                idx = 0
                 for typ in self.types[1:]:
+                    idx+=1
                     typ.name = typeStrings[self.readPacked()]
+                    debugType(str(idx) + " read type " + typ.name)
 
-                    for i in xrange(self.readPacked()):
+                    templateCount = self.readPacked()
+                    if templateCount != 0:
+                        debugType("    temp count: " + str(templateCount))
+                    for i in xrange(templateCount):
                         template = TagTemplate(typeStrings[self.readPacked()], self.readPacked())
 
                         if template.isType:
-                            # print("template " + template.name + " has type " + self.types[template.value].name + " (" + str(template.value))
+                            debugType("    template " + template.name + " has type " + self.types[template.value].name + " (" + str(template.value))
                             template.value = self.types[template.value]
 
                         typ.templates.append(template)
-                debug("types", [x.name for x in self.types[1:]])
+                debugType("types", [x.name for x in self.types[1:]])
 
             with TagSectionReader(self, "FSTR") as t5:
                 fieldStrings = self.f.read(t5.size).split("\0")
-                debug("field strings:", fieldStrings, len(fieldStrings))
+                debugType("field strings:", fieldStrings, len(fieldStrings))
 
             startIdx = self.f.tell()
             # debug("TBDY_Index", startIdx)
@@ -276,11 +315,16 @@ class TagReader(object):
                         continue
 
                     typ = self.types[typeIndex]
+                    debugType("Typedef", typ.name)
                     typ.parent = self.types[self.readPacked()]
+                    if typ.parent != None:
+                        debugType("    parent:", typ.parent.name)
                     typ.flags = self.readPacked()
+                    debugType("    flag:", typ.flags)
 
                     if typ.flags & TagFlagV2.HasFormatInfo:
                         typ.mFormatInfo = self.readPacked()
+                        debugType("    format:", typ.mFormatInfo)
 
                     if typ.flags & TagFlagV2.HasSubType:
                         typ.mSubType = self.types[self.readPacked()]
@@ -290,6 +334,7 @@ class TagReader(object):
 
                     if typ.flags & TagFlagV2.ByteSize:
                         typ.byteSize = self.readPacked()
+                        debugType("    byteSize:", typ.byteSize)
                         typ.alignment = self.readPacked()
 
                     if typ.flags & TagFlagV2.HasUnknownFlags:
@@ -305,8 +350,7 @@ class TagReader(object):
                         # debug("start idx", startIdx)
                         # memberCount = self.readPacked(firstByteInMemberCount)
                         memberCount = firstByteInMemberCount & 0x3F
-                        # print("Type " + typ.name + " (" + str(memberCount) + ")")
-                        # print("memberCount", memberCount)
+                        debugType("Memberdef " + typ.name + " (" + str(memberCount) + ")")
                         for i in xrange(memberCount):
                             member = TagMember()
                             fieldIndex = self.readPacked()
@@ -317,7 +361,7 @@ class TagReader(object):
                             typesIndex = self.readPacked()
                             # print("types idx", typesIndex)
                             member.typ = self.types[typesIndex]
-                            # print("    " + member.name +": " + member.typ.name + ", Flags: (" + str(member.flags) + ") (offset " + str(member.byteOffset)+ ") (typeidx: " + str(typesIndex) + ")")
+                            debugType("    " + member.name +": " + member.typ.name + ", Flags: (" + str(member.flags) + ") (offset " + str(member.byteOffset)+ ") (typeidx: " + str(typesIndex) + ")")
                             typ.members.append(member)
                     # else:
                     #     print("Type " + typ.name)
@@ -356,9 +400,21 @@ class TagReader(object):
                     item.isPtr = bool(flag & 0x10000000)
                     item.offset = self.dataOffset + self.readFormat("<I")
                     item.count = self.readFormat("<I")
+                    if item.typ != None and item.typ.name == "hkStringPtr":
+                        debugReadObj("INDX: hkStringPtr count:", item.count, "isPtr?:", item.isPtr, "flag", flag, "offset", item.offset)
                     self.items.append(item)
 
             with TagSectionReader(self, "PTCH") as t3:
+                self.patches = {}
+                while not t3.end:
+                    typeIndex = self.readFormat("<I")
+                    positionCount = self.readFormat("<I")
+                    debugReadObj("PTCH: type " + str(typeIndex) + ", count:" + str(positionCount))
+                    self.patches[typeIndex] = []
+                    for i in xrange(positionCount):
+                        offset = self.readFormat("<I")
+                        debugReadObj("    PTCH: offset " + str(offset))
+                        self.patches[typeIndex].append(offset)
                 pass
 
     def readRootSection(self):
@@ -421,7 +477,11 @@ class TagReader(object):
         # if not isTarget:
         #     isTarget = typ.name == "hkaDefaultAnimatedReferenceFrame"
         # if isTarget:
-        #     print("ReadObj: " + typ.name + " Offset: " + str(offset))
+
+        global indent
+        # debugReadObj("ReadObj: " + typ.name + " Offset: " + str(offset))
+        # if offset > 10000:
+        #     exit(1)
         if offset == 0:
             offset = self.f.tell()
 
@@ -434,19 +494,32 @@ class TagReader(object):
         value = None
 
         if typ.subType == TagSubType.Bool:
+            # debugReadObj("reading bool")
             value = self.readFormat(TagReader.getFormatString(typ.mFormatInfo)) > 0
 
         elif typ.subType == TagSubType.String:
-            value = "".join(map(chr, [x.value for x in self.readItemPtr()[:-1]]))
+            debugReadObj("reading str")
+            global flagDebugReadObj
+            # flagDebugReadObj = False
+            indent += 1
+            value = "".join(map(chr, [x.value for x in self.readItemPtr(typ)[:-1]]))
+            indent -= 1
+            # flagDebugReadObj = True
+            debugReadObj("^-got str:", value)
 
         elif typ.subType == TagSubType.Int:
+            # debugReadObj("reading int")
             value = self.readFormat(TagReader.getFormatString(typ.mFormatInfo))
 
         elif typ.subType == TagSubType.Float:
+            # debugReadObj("reading float")
             value = self.readFormat("<f")
 
         elif typ.subType == TagSubType.Pointer:
-            value = self.readItemPtr()
+            debugReadObj("reading ptr")
+            indent += 1
+            value = self.readItemPtr(typ)
+            indent -= 1
 
             if len(value) == 1:
                 value = value[0]
@@ -459,39 +532,80 @@ class TagReader(object):
             #     print("ReadObj: " + typ.name)
             #     print("ReadObj: " + str(typ.subType))
             value = {}
+            debugReadObj("reading class", typ.name)
             for x in typ.allMembers:
-                if isTarget:
-                    print("    " + x.name + "    " + str(x.typ.name))
+                # if isTarget:
+                debugReadObj(typ.name + "." + x.name, "(" + str(x.typ.name) + ")")
+                indent += 1
                 value[x.name] = self.readObject(x.typ, offset + x.byteOffset)
+                indent -= 1
             #
             # value = {x.name: self.readObject(x.typ, offset + x.byteOffset)
             #          for x in typ.allMembers}
 
         elif typ.subType == TagSubType.Array:
-            value = self.readItemPtr()
+            debugReadObj("reading array", str(typ), "offset", offset)
+            indent += 1
+            value = self.readItemPtr(typ)
+            indent -= 1
 
         elif typ.subType == TagSubType.Tuple:
+            debugReadObj("reading tuple", typ.name, "size", typ.tupleSize, "offset", offset)
             value = tuple([self.readObject(typ.mSubType, offset + x * typ.mSubType.superType.byteSize)
                            for x in xrange(typ.tupleSize)])
 
         self.f.seek(offset + typ.byteSize)
         return TagObject(value, typOrg)
 
-    def readItemPtr(self):
+    def readItemPtr(self, containerType):
+        startOffset = self.f.tell()
         index = self.readFormat("<I")
-
         if index == 0:
             return []
 
         else:
-            debug("read item, len", len(self.items), "index", index)
+            debugReadObj("read item ptr, offset", startOffset, "type index", index)
+            if index >= len(self.items):
+                debugReadObj("===index exceed!===")
+                debugReadObj("read item ptr", "index", index, "pos", self.f.tell())
+                item = self.items[index]
+                return
             item = self.items[index]
+            debugReadObj("container type:", str(containerType))
+            debugReadObj("item ptr:", item.typ.superType.name, ", index", index, ", item count", item.count, ", item offset", item.offset, ", pos", self.f.tell())
 
+            global indent
             if item.value == None:
-                item.value = [self.readObject(item.typ,
-                                              item.offset + x * item.typ.superType.byteSize)
-                              for x in xrange(item.count)]
+                item.value = []
+                for x in xrange(item.count):
+                    offset = item.offset + x * item.typ.superType.byteSize
+                    if item.typ.name != "char":
+                        debugReadObj("^-try read subitem", x, ", type", item.typ.name, ", type size", item.typ.superType.byteSize, ", offset", offset)
+                        debugReadObj("^-superType", item.typ.superType.name, "subType?", item.typ.flags & TagFlag.SubType)
+                    indent += 1
 
+                    typeIndex = self.types.index(item.typ)
+                    if item.typ.name != "char":
+                        debugReadObj("typeIndex", typeIndex)
+                    if typeIndex in self.patches:
+                        if typeIndex not in self.currPatch:
+                            self.currPatch[typeIndex] = 0
+                        # itemIdx = index+x
+                        itemIdx = self.currPatch[typeIndex]
+                        self.currPatch[typeIndex] += 1
+                        patches = self.patches[typeIndex]
+                        if itemIdx < len(patches):
+                            offset = patches[itemIdx] + self.dataOffset
+                            debugReadObj("item ptr patchOffset", patches[itemIdx], "offset", offset)
+                        else:
+                            debugReadObj("type " + str(item.typ) + " has patches but itemIdx " + str(itemIdx) + " exceeds max " + str(len(patches)))
+                    else:
+                        debugReadObj("type " + str(item.typ) + " has no patches")
+                    obj = self.readObject(item.typ, offset)
+                    item.value.append(obj)
+                    indent -= 1
+            else:
+                debugReadObj("  already exist", item.typ, item.value)
             return item.value
 
     def readFormat(self, format):
@@ -566,9 +680,16 @@ class TagReader(object):
             return None
 
         if item.value == None:
-            item.value = [self.readObject(item.typ,
-                                          item.offset + x * item.typ.superType.byteSize)
-                          for x in xrange(item.count)]
+            itemCount = item.count
+            debugReadObj("read obj, type:", item.typ.name, "item count", itemCount)
+            item.value = []
+            for x in xrange(itemCount):
+                subItem = self.readObject(item.typ, item.offset + x * item.typ.superType.byteSize)
+
+                item.value.append(subItem)
+            # item.value = [self.readObject(item.typ,
+            #                               item.offset + x * item.typ.superType.byteSize)
+            #               for x in xrange(item.count)]
 
         return item.value[0]
 
@@ -1516,6 +1637,12 @@ class TagTypeBackporter(object):
                         typ.name == "hkPropertyDesc":
                     types.remove(typ)
 
+        # hkbProjectStringData
+        typ = TagTypeBackporter.findType(types, "hkbProjectStringData")
+        if typ != None and typ.version > 2:
+            print("backport hkbProjectStringData")
+            typ.version = 2
+
         # hkxMeshSection
         typ = TagTypeBackporter.findType(types, "hkxMeshSection")
         if typ != None and typ.version > 4:
@@ -1583,6 +1710,8 @@ def findFile(fileName, mandatory=True):
 
 
 if __name__ == "__main__":
+    import sys
+    # sys.setrecursionlimit(10000)
     if len(sys.argv) <= 1:
         print "Tool for converting HKX (version <= 2012 2.0) files to 2016 1.0 tag binary files, and vice versa."
         print "\nUsage: {} [source] [compendium] [destination]".format(os.path.basename(sys.argv[0]))
@@ -1630,6 +1759,7 @@ if __name__ == "__main__":
             TagXmlSerializer.toFile(destinationFileName, parsedObj, TagTypeBackporter.backportTypes2012)
 
             if (assetCc2Path != None):
+                print('feed AssetCc2')
                 # subprocess.call([assetCc2Path, "--strip", "--rules8011", tempFileName, outputFileName])
                 subprocess.call([assetCc2Path, "--strip", "--rules4101", tempFileName, outputFileName])
                 # print("assetCc to " + outputFileName)
