@@ -15,14 +15,14 @@ namespace Havoc.Cli {
             HkBinaryTagfileWriter.Write(dest + ".2016.hkx", obj, HkSdkVersion.V20160200);
         }
 
-        private static void DMain(string[] args) {
+        private static void RMain(string[] args) {
             Debug.DebugLevel = Debug.DebugInfoType.ReadProcess |
-                               Debug.DebugInfoType.WriteProcess |
+                               // Debug.DebugInfoType.WriteProcess |
                                Debug.DebugInfoType.TypeDef |
                                Debug.DebugInfoType.Temporary;
 
             var skeleton =
-                @"D:\Steam\steamapps\common\ELDEN RING\Game\dsanime\c2120-behbnd\GR\data\INTERROOT_win64\action\c2120\Export\Behaviors\c9997.hkx";
+                @"D:\Steam\steamapps\common\ELDEN RING\Game\dsanime\c2120-behbnd\GR\data\INTERROOT_win64\action\c2120\Export\c2120.hkx";
             var compendium = "";
 
             Read(skeleton, compendium,

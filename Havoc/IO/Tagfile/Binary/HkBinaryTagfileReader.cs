@@ -341,7 +341,10 @@ namespace Havoc.IO.Tagfile.Binary
                 if (!InfoLogged.ContainsKey(type.Name + info) && type.FormatInfo > 0b00001000) {
                     InfoLogged[type.Name + info] = true;
                     // Debug.Temporary($"Type {type.Name} has format {type.Format} (info: {Convert.ToString(type.FormatInfo, 2)}), flag {type.Flags}");
-                    Debug.TypeDef($"Type {type.Name.PadRight(16, ' ')} {info}");
+                    Debug.TypeDef($"Type {type.Name.PadRight(16, ' ')} {info} Format {type.Format }");
+                    if (type.Format == HkTypeFormat.String) {
+                        Debug.TypeDef($"  IsFixedSize {type.IsFixedSize}");
+                    }
                 }
 
                 // 

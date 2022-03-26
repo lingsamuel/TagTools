@@ -33,6 +33,8 @@ namespace Havoc.Reflection
 
         public HkTypeFormat Format => ( HkTypeFormat ) ( FormatInfo & 0xF );
 
+        public bool IsPtr => (Format == HkTypeFormat.Ptr);
+
         public bool IsSigned =>
             ( Format == HkTypeFormat.Bool || Format == HkTypeFormat.Int ) && ( FormatInfo & 0x200 ) != 0;
 

@@ -26,8 +26,9 @@ namespace Havoc {
             Log(DebugInfoType.ReadProcess, format, args);
         }
 
+        public static int WriteProcessIndent = 0;
         public static void WriteProcess(string format, params object[] args) {
-            Log(DebugInfoType.WriteProcess, format, args);
+            Log(DebugInfoType.WriteProcess, new string(' ', 2* WriteProcessIndent) + format, args);
         }
 
         public static void TypeDef(string format, params object[] args) {

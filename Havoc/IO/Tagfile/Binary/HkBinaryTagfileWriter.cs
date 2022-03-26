@@ -101,6 +101,7 @@ namespace Havoc.IO.Tagfile.Binary
         {
             using ( var indexSection = new HkSectionWriter( mWriter, "INDX", true ) )
             {
+                Debug.WriteProcess($"Items: {mItems.Count}, Patches: {mPatches.Select(x=>x.Value.Count).Sum()}");
                 using ( var itemSection = new HkSectionWriter( mWriter, "ITEM", false ) )
                 {
                     mWriter.WriteNulls( 12 );
@@ -120,8 +121,11 @@ namespace Havoc.IO.Tagfile.Binary
                         mWriter.Write( GetTypeIndex( type ) );
                         mWriter.Write( positions.Count );
 
-                        foreach ( long position in positions.OrderBy( x => x ) )
+                        Debug.WriteProcess($"WritePTCH: {type.Name} ({positions.Count})");
+                        foreach (long position in positions.OrderBy(x => x)) {
+                            Debug.WriteProcess($"WritePTCH:  real: {position} = {mDataOffset} + {(position - mDataOffset)}");
                             mWriter.Write( ( uint ) ( position - mDataOffset ) );
+                        }
                     }
                 }
             }
@@ -163,10 +167,13 @@ namespace Havoc.IO.Tagfile.Binary
 
                 case HkTypeFormat.String:
                 {
-                    if ( obj.Type.IsFixedSize )
+                    if (obj.Type.IsFixedSize) {
                         mWriter.Write( obj.GetValue<HkString, string>(), obj.Type.FixedSize );
-                    else
+                    }
+                    else {
+                        Debug.WriteProcess($"Write patched VariantString {obj.Type.Name}: {obj.Value}");
                         WriteItemIndex( obj );
+                    }
 
                     break;
                 }
@@ -230,6 +237,7 @@ namespace Havoc.IO.Tagfile.Binary
 
                 case HkTypeFormat.Ptr:
                 {
+                    Debug.WriteProcess($"Write patched VariantPtr {obj.Type.Name}: {obj.Value}");
                     WriteItemIndex( obj );
                     break;
                 }
@@ -254,10 +262,14 @@ namespace Havoc.IO.Tagfile.Binary
                 case HkTypeFormat.Array:
                 {
                     if ( obj.Type.IsFixedSize )
-                        foreach ( var childObject in obj.GetValue<HkArray, IReadOnlyList<IHkObject>>() )
+                    {
+                        foreach (var childObject in obj.GetValue<HkArray, IReadOnlyList<IHkObject>>()) {
                             WriteObject( childObject );
-                    else
+                        }}
+                    else {
+                        Debug.WriteProcess($"Write patched VariantSize Array {obj.Type.Name}: {obj.Value}");
                         WriteItemIndex( obj );
+                    }
 
                     break;
                 }
@@ -270,8 +282,10 @@ namespace Havoc.IO.Tagfile.Binary
         private void WriteItemIndex( IHkObject obj )
         {
             int index = GetItemIndex( obj );
-            if ( index != 0 )
+            if (index != 0) {
+                Debug.WriteProcess($"AddPatch index {index} for obj {obj.Type.Name}: pos {mStream.Position}");
                 AddPatch( obj.Type, mStream.Position );
+            }
 
             mWriter.Write( index );
         }
@@ -285,9 +299,11 @@ namespace Havoc.IO.Tagfile.Binary
             {
                 case HkTypeFormat.String when !obj.Type.IsFixedSize:
                 {
+                    Debug.WriteProcess($"Write VariantSize Str: {obj.Type.Name}, {obj.Value}.");
+                    Debug.WriteProcessIndent += 1;
                     // TODO: Find a better way to accomplish this
                     var charType = mTypeCompendium.FirstOrDefault( x => x.Name.Equals( "char" ) );
-                    if ( charType == null )
+                    if ( charType == null ) {
                         mTypeCompendium.Add( charType = new HkType
                         {
                             Name = "char",
@@ -296,11 +312,14 @@ namespace Havoc.IO.Tagfile.Binary
                             mByteSize = 1,
                             mAlignment = 1
                         } );
+                        
+                    }
 
-                    AddItem( new Item( charType,
-                        Encoding.UTF8.GetBytes( obj.GetValue<HkString, string>() )
-                            .Select( x => new HkByte( charType, x ) ).Append( new HkByte( charType, 0 ) ) ) );
+                    var bytes = Encoding.UTF8.GetBytes(obj.GetValue<HkString, string>())
+                        .Select(x => new HkByte(charType, x)).Append(new HkByte(charType, 0));
+                    AddItem( new Item( charType, bytes ) );
 
+                    Debug.WriteProcessIndent -= 1;
                     break;
                 }
 
@@ -308,7 +327,10 @@ namespace Havoc.IO.Tagfile.Binary
                 {
                     var ptrObject = obj.GetValue<HkPtr, IHkObject>();
                     AddItem( new Item( ptrObject.Type, ptrObject ) );
+                    Debug.WriteProcess($"Write Ptr: {obj.Type.Name}");
+                    Debug.WriteProcessIndent += 1;
                     AddItemsRecursively( ptrObject );
+                    Debug.WriteProcessIndent -= 1;
 
                     break;
                 }
@@ -319,8 +341,13 @@ namespace Havoc.IO.Tagfile.Binary
                     if ( obj == mRootObject )
                         AddItem( new Item( obj.Type, obj ) );
 
-                    foreach ( var (_, fieldObject) in obj.GetValue<HkClass, IReadOnlyDictionary<HkField, IHkObject>>() )
+                    Debug.WriteProcess($"Write Class: {obj.Type.Name}");
+                    foreach (var (fieldType, fieldObject) in obj.GetValue<HkClass, IReadOnlyDictionary<HkField, IHkObject>>()) {
+                        Debug.WriteProcessIndent += 1;
+                        Debug.WriteProcess($"^-{fieldType.Name} ({fieldType.Type.Name})");
                         AddItemsRecursively( fieldObject );
+                        Debug.WriteProcessIndent -= 1;
+                    }
 
                     break;
                 }
@@ -335,8 +362,12 @@ namespace Havoc.IO.Tagfile.Binary
                     if ( !obj.Type.IsFixedSize )
                         AddItem( new Item( obj.Type.SubType, array ) );
 
-                    foreach ( var childObject in array )
+                    Debug.WriteProcessIndent += 1;
+                    Debug.WriteProcess($"Write Array: {obj.Type.Name} ({array.Count})");
+                    foreach (var childObject in array) {
                         AddItemsRecursively( childObject );
+                    }
+                    Debug.WriteProcessIndent -= 1;
 
                     break;
                 }
@@ -351,9 +382,11 @@ namespace Havoc.IO.Tagfile.Binary
 
         private void AddPatch( HkType type, long position )
         {
-            if ( !mPatches.TryGetValue( type, out var positions ) )
+            if (!mPatches.TryGetValue(type, out var positions)) {
                 mPatches[ type ] = positions = new List<long>();
+            }
 
+            Debug.WriteProcess($"AddPatch: {type.Name} real-pos {position}");
             positions.Add( position );
         }
 

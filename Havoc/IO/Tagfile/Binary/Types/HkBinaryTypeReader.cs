@@ -102,14 +102,20 @@ namespace Havoc.IO.Tagfile.Binary.Types {
                                 type.mFormatInfo = (int)reader.ReadPackedInt();
                             }
 
-                            if ((type.Flags & HkTypeFlags.HasSubType) != 0)
+                            if ((type.Flags & HkTypeFlags.HasSubType) != 0) {
                                 type.mSubType = ReadTypeIndex();
+                                if (type.SubType != null) {
+                                    Debug.TypeDef($"Type Read: SubType {type.mSubType.Name}");
+                                }
+                            }
 
-                            if ((type.Flags & HkTypeFlags.HasVersion) != 0)
+                            if ((type.Flags & HkTypeFlags.HasVersion) != 0) {
                                 type.mVersion = (int)reader.ReadPackedInt();
+                            }
 
                             if ((type.Flags & HkTypeFlags.HasByteSize) != 0) {
                                 type.mByteSize = (int)reader.ReadPackedInt();
+                                Debug.TypeDef($"Type Read: ByteSize {type.mByteSize}");
                                 type.mAlignment = (int)reader.ReadPackedInt();
                             }
 
