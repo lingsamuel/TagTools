@@ -16,6 +16,12 @@ namespace Havoc.Reflection
             AddRecursively( obj );
         }
 
+        public HkTypeCompendium( List<IHkObject> objs )
+        {
+            // mTypes.Add(new HkType());
+            objs.ForEach(AddRecursively);
+        }
+
         public HkTypeCompendium( IEnumerable<HkType> types )
         {
             foreach ( var type in types )

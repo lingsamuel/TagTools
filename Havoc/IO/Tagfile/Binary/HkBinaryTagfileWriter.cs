@@ -71,11 +71,13 @@ namespace Havoc.IO.Tagfile.Binary
             {
                 mDataOffset = mStream.Position;
 
+                Debug.Temporary($"WRITE: items {mItems.Count}");
                 foreach ( var item in mItems )
                 {
                     mWriter.WriteAlignmentPadding( item.Type.Alignment );
 
                     item.Position = mStream.Position;
+                    Debug.Temporary($"WRITE:   objects {item.Objects.Count}");
                     foreach ( var obj in item.Objects )
                         WriteObject( obj );
                 }
@@ -344,7 +346,7 @@ namespace Havoc.IO.Tagfile.Binary
                     Debug.WriteProcess($"Write Class: {obj.Type.Name}");
                     foreach (var (fieldType, fieldObject) in obj.GetValue<HkClass, IReadOnlyDictionary<HkField, IHkObject>>()) {
                         Debug.WriteProcessIndent += 1;
-                        // Debug.WriteProcess($"^-{fieldType.Name} ({fieldType.Type.Name})");
+                        Debug.WriteProcess($"^-{fieldType.Name} ({fieldType.Type.Name})");
                         AddItemsRecursively( fieldObject );
                         Debug.WriteProcessIndent -= 1;
                     }
@@ -371,6 +373,10 @@ namespace Havoc.IO.Tagfile.Binary
 
                     break;
                 }
+                
+                default:
+                    AddItem( new Item( obj.Type, obj ) );
+                    break;
             }
 
             void AddItem( Item item )

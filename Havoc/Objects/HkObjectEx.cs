@@ -52,12 +52,20 @@ namespace Havoc.Objects
                     if (obj.Type.IsHalf) {
                         return ((Half)obj.Value) != (Half)0;
                     }
-                    if (obj.Type.IsSingle && (float)obj.Value >= 0xff7fffee) {
+                    if ((obj.Type.IsSingle && ((float)obj.Value >= 0xff7fffee) || float.IsNaN((float)obj.Value))) {
                         // Handle "NaN"
                         // TODO: support more NaN?
                         return true;
                     }
-                    return Convert.ToDecimal(obj.Value) != 0;
+
+                    decimal dec = 0;
+                    try {
+                        dec = Convert.ToDecimal(obj.Value);
+                    } catch (Exception e) {
+                        Console.WriteLine($"value: {obj.GetType()} {obj.Value}, error: {e}");
+                        return true;
+                    }
+                    return dec != 0;
 
                 case HkTypeFormat.Ptr:
                     return obj.Value != null;

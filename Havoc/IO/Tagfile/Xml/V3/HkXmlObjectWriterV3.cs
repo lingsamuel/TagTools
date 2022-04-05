@@ -23,6 +23,15 @@ namespace Havoc.IO.Tagfile.Xml.V3
             AddObjectsRecursively( rootObject );
         }
 
+        public HkXmlObjectWriterV3( List<IHkObject> objs )
+        {
+            TypeWriter = new HkXmlTypeWriterV3( new HkTypeCompendium( objs ) );
+            RootObject = objs[0];
+
+            mObjects = new OrderedSet<IHkObject>();
+            objs.ForEach(AddObjectsRecursively);
+        }
+
         public IHkXmlTypeWriter TypeWriter { get; }
         public IHkObject RootObject { get; }
 
@@ -165,6 +174,7 @@ namespace Havoc.IO.Tagfile.Xml.V3
             if ( obj == null || mObjects.Contains( obj ) || obj.Value == null )
                 return;
 
+            Console.WriteLine($"Add Obj {obj.Type.Format}");
             switch ( obj.Type.Format )
             {
                 case HkTypeFormat.Ptr:
@@ -178,20 +188,26 @@ namespace Havoc.IO.Tagfile.Xml.V3
                     if ( obj == RootObject )
                         mObjects.Add( obj );
 
-                    foreach ( var (_, fieldObject) in
-                        obj.GetValue<HkClass, IReadOnlyDictionary<HkField, IHkObject>>() )
+                    foreach (var (field, fieldObject) in obj.GetValue<HkClass, IReadOnlyDictionary<HkField, IHkObject>>()) {
+                        Console.WriteLine($"Add field {field.Name}");
                         AddObjectsRecursively( fieldObject );
+                    }
 
                     break;
                 }
 
                 case HkTypeFormat.Array:
                 {
+                    Console.WriteLine($"Add array {((HkArray)obj).Value.Count}");
                     foreach ( var childObject in obj.GetValue<HkArray, IReadOnlyList<IHkObject>>() )
                         AddObjectsRecursively( childObject );
 
                     break;
                 }
+                
+                default:
+                    mObjects.Add(obj);
+                    break;
             }
         }
     }

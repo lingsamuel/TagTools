@@ -47,7 +47,7 @@ namespace Havoc.IO.Tagfile.Binary.Types {
                                 // for hkRootLevelContainer,
                                 // 40 00 13 F8
                                 // wtf? is first two bits flags?
-                                Debug.Temporary("POSITION: " + reader.BaseStream.Position);
+                                // Debug.Temporary("POSITION: " + reader.BaseStream.Position);
                                 // templateCount = (int)reader.ReadPackedInt();
                                 templateCount &= 0x3F;
                             }

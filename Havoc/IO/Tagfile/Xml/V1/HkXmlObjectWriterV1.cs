@@ -23,6 +23,15 @@ namespace Havoc.IO.Tagfile.Xml.V1
             AddObjectsRecursively( rootObject );
         }
 
+        public HkXmlObjectWriterV1( List<IHkObject> objs )
+        {
+            TypeWriter = new HkXmlTypeWriterV1( new HkTypeCompendium( objs ) );
+            RootObject = objs[0];
+
+            mObjects = new OrderedSet<IHkObject>();
+            objs.ForEach(AddObjectsRecursively);
+        }
+
         public IHkXmlTypeWriter TypeWriter { get; }
         public IHkObject RootObject { get; }
         public IReadOnlyList<IHkObject> Objects => mObjects;

@@ -7,22 +7,24 @@ using Havoc.IO.Tagfile.Xml.V3;
 namespace Havoc.Cli {
     internal class Program {
         private static void Read(string path, string compendium = "", string dest = "") {
+            // var obj = HkBinaryTagfileReader.ReadAllObjects(path, compendium);
             var obj = HkBinaryTagfileReader.Read(path, compendium);
             Console.WriteLine("Write xml to " + dest);
-            HkXmlTagfileWriterV3.Instance.Write(dest + ".2016.xml", obj);
+            HkXmlTagfileWriterV3.Instance.Write(dest + ".2018.xml", obj);
 
-            Console.WriteLine("Write bin to " + dest);
-            HkBinaryTagfileWriter.Write(dest + ".2016.hkx", obj, HkSdkVersion.V20160200);
+            // Console.WriteLine("Write bin to " + dest);
+            // HkBinaryTagfileWriter.Write(dest + ".2018.hkx", obj, HkSdkVersion.V20180100);
         }
 
-        private static void RMain(string[] args) {
+        private static void Main(string[] args) {
             Debug.DebugLevel = Debug.DebugInfoType.ReadProcess |
                                // Debug.DebugInfoType.WriteProcess |
-                               // Debug.DebugInfoType.TypeDef |
+                               Debug.DebugInfoType.TypeDef |
                                Debug.DebugInfoType.Temporary;
 
             var skeleton =
                 @"D:\Steam\steamapps\common\ELDEN RING\Game\chr\c0000-behbnd\GR\data\INTERROOT_win64\action\c0000\Export\Behaviors\c0000.hkx";
+                // @"D:\Steam\steamapps\common\ELDEN RING\Game\dsanime\output\c0000.hkx.beh.2018.hkx";
             var compendium = @"";
 
             Read(skeleton, compendium,
@@ -30,7 +32,7 @@ namespace Havoc.Cli {
             // Read(skeleton);
         }
 
-        private static void Main(string[] args) {
+        private static void RMain(string[] args) {
             if (args.Length <= 0) {
                 Console.WriteLine(@"Havoc CLI v0.2.0 -- Read HKX V2018 and convert to V2016
 Usage:

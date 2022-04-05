@@ -201,6 +201,29 @@ namespace Havoc.IO.Tagfile.Binary
             }
         }
 
+        public static List<IHkObject> ReadAllObjects( Stream source, string compendium = "", bool leaveOpen = false )
+        {
+            using ( var reader = new HkBinaryTagfileReader( source, compendium, leaveOpen ) )
+            {
+                // stuff
+                reader.ReadCompendium();
+                reader.ReadRootSection();
+                // Console.WriteLine("FoundTypes: " + reader.mTypes.Count);
+                
+                Debug.Temporary($"items: {reader.mItems.Count} {reader.mItems.Sum(x=>x.Objects.Count)}");
+                Debug.Temporary($"items: {reader.mItems[ 1 ].Objects.Count}");
+                return reader.mItems.SelectMany(x=>x.Objects).ToList();
+            }
+        }
+
+        public static List<IHkObject> ReadAllObjects( string filePath, string compendium = "" )
+        {
+            using ( var source = File.OpenRead( filePath ) )
+            {
+                return ReadAllObjects( source, compendium );
+            }
+        }
+
         public static IHkObject Read( Stream source, string compendium = "", bool leaveOpen = false )
         {
             using ( var reader = new HkBinaryTagfileReader( source, compendium, leaveOpen ) )
@@ -209,6 +232,9 @@ namespace Havoc.IO.Tagfile.Binary
                 reader.ReadCompendium();
                 reader.ReadRootSection();
                 // Console.WriteLine("FoundTypes: " + reader.mTypes.Count);
+                
+                Debug.Temporary($"items: {reader.mItems.Count} {reader.mItems.Sum(x=>x.Objects.Count)}");
+                Debug.Temporary($"items: {reader.mItems[ 1 ].Objects.Count}");
                 return reader.mItems[ 1 ].Objects[ 0 ];
             }
         }
