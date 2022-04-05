@@ -47,7 +47,7 @@ namespace Havoc.IO.Tagfile.Binary.Types
 
                     var idx = 0;
                     foreach ( var type in typeCompendium ) {
-                        // Console.WriteLine($"{idx} Writ type " + type + $", name: {type.Name}");
+                        Debug.WriteProcess($"{idx} Writ type " + type + $", name: {type.Name}");
                         idx++;
                         writer.WritePackedInt( typeStrings.IndexMap[ type.Name ] );
                         writer.WritePackedInt( type.mParameters.Count );
@@ -108,10 +108,9 @@ namespace Havoc.IO.Tagfile.Binary.Types
 
                                 var typeIndex = GetTypeIndex(field.Type);
                                 writer.WritePackedInt( typeIndex );
-                                // Console.WriteLine($"WRIT: {field.Name}, T: {field.Type?.Name} ({typeIndex})");
+                                Debug.WriteProcess($"WRIT: {field.Name}, T: {field.Type?.Name} ({typeIndex})");
 
                                 if (type.Name == "hkPropertyId") {
-                                    // Console.WriteLine($"WRIT: hkPropId: {field.Name}, T: {field.Type?.Name}");
                                 }
                             }
                         }

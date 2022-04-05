@@ -21,6 +21,8 @@ namespace Havoc.IO.Tagfile.Binary
         private long mDataOffset;
         private List<Item> mItems;
         private List<HkType> mTypes;
+        private Dictionary<HkType, uint[]> mPatches;
+        private Dictionary<HkType, int> mCurrentPatches = new Dictionary<HkType, int>();
 
         private HkBinaryTagfileReader( Stream stream, string compendium, bool leaveOpen )
         {
@@ -125,6 +127,28 @@ namespace Havoc.IO.Tagfile.Binary
             mTypes = HkBinaryTypeReader.ReadTypeSection( mReader, section );
         }
 
+        private void ReadPatchSection(HkSection section) {
+            mPatches = new Dictionary<HkType, uint[]>();
+            
+            mReader.BaseStream.Seek( section.Position, SeekOrigin.Begin );
+            while (mReader.BaseStream.Position < section.Position + section.Length) {
+                var typeIndex = mReader.ReadInt32();
+                var type = mTypes[typeIndex];
+                var count = mReader.ReadInt32();
+                Debug.ReadProcess($"PTCH: type {type}({typeIndex}), count {count}");
+                mPatches[type] = new uint[count];
+
+                for (int i = 0; i < count; i++) {
+                    var offset = mReader.ReadUInt32();
+                    // if (count < 10) {
+                    //     Debug.ReadProcess($"PTCH:   offset {offset}");
+                    // }
+                    mPatches[type][i] = offset;
+                }
+            }
+            
+        }
+
         private void ReadIndexSection( HkSection section )
         {
             foreach ( var subSection in section.SubSections )
@@ -142,6 +166,7 @@ namespace Havoc.IO.Tagfile.Binary
                     }
 
                     case "PTCH":
+                        ReadPatchSection(subSection);
                         break;
 
                     default:
@@ -449,13 +474,36 @@ namespace Havoc.IO.Tagfile.Binary
                             type.IsDouble ? ( IHkObject ) new HkDouble( type, mTag.mReader.ReadDouble() ) :
                             throw new InvalidDataException( "Unexpected floating point format" );
                     }
-                    case HkTypeFormat.Ptr:
-                        return new HkPtr( type, ReadItemIndex()?[ 0 ] );
+                    case HkTypeFormat.Ptr: {
+                        var item = ReadItemIndex();
 
-                    case HkTypeFormat.Class:
+                        if (item == null || item.Count != 1) {
+                            return new HkPtr(type, null);
+                        }
+                        return new HkPtr( type, item?[0] );
+                    }
+
+                    case HkTypeFormat.Class: {
                         return new HkClass( type,
                             type.AllFields.ToDictionary( x => x,
-                                x => ReadObject( x.Type, offset + x.ByteOffset ) ) );
+                                x => {
+                                    var patchedOffset = offset + x.ByteOffset;
+
+                                    if (mTag.mPatches.ContainsKey(x.Type)) {
+                                        if (!mTag.mCurrentPatches.ContainsKey(x.Type)) {
+                                            mTag.mCurrentPatches[x.Type] = 0;
+                                        }
+
+                                        var itemIdx = mTag.mCurrentPatches[x.Type];
+                                        mTag.mCurrentPatches[x.Type] += 1;
+                                        if (itemIdx < mTag.mPatches[x.Type].Length) {
+                                            patchedOffset = mTag.mDataOffset + mTag.mPatches[x.Type][itemIdx];
+                                        }
+                                    }
+
+                                    return ReadObject(x.Type, patchedOffset);
+                                }) );
+                    }
 
                     case HkTypeFormat.Array:
                     {
@@ -476,6 +524,11 @@ namespace Havoc.IO.Tagfile.Binary
                 IReadOnlyList<IHkObject> ReadItemIndex()
                 {
                     int index = mTag.mReader.ReadInt32();
+                    if (index < 0) {
+                        throw new Exception($"ReadItemIndex: {index} < 0");
+                    } else if (index >= mTag.mItems.Count) {
+                        throw new Exception($"ReadItemIndex: {index} > {mTag.mItems.Count}");
+                    }
                     return index == 0 ? null : mTag.mItems[ index ].Objects;
                 }
             }

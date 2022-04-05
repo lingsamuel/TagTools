@@ -32,7 +32,6 @@ namespace Havoc.IO.Tagfile.Binary.Types {
                         int typeCount = (int)reader.ReadPackedInt();
 
                         Debug.TypeDef($"Typedef: count: {typeCount}");
-                        // Console.WriteLine("Got type count " + typeCount);
                         types = new List<HkType>(typeCount);
                         for (int i = 0; i < typeCount; i++)
                             types.Add(new HkType());
@@ -79,7 +78,7 @@ namespace Havoc.IO.Tagfile.Binary.Types {
                         while (reader.BaseStream.Position < subSection.Position + subSection.Length) {
                             var fieldStr = reader.ReadNullTerminatedString();
                             fieldStrings.Add(fieldStr);
-                            // Console.WriteLine("field str: " + fieldStr);
+                            Debug.TypeDef("field str: " + fieldStr);
                         }
 
                         break;
@@ -92,9 +91,6 @@ namespace Havoc.IO.Tagfile.Binary.Types {
                             if (type == null)
                                 continue;
 
-                            // if (type.Name == "hkPropertyId") {
-                            //     Console.WriteLine($"[LoopEnter] Pos {reader.BaseStream.Position}");
-                            // }
                             type.ParentType = ReadTypeIndex();
                             type.Flags = (HkTypeFlags)reader.ReadPackedInt();
 
@@ -126,7 +122,7 @@ namespace Havoc.IO.Tagfile.Binary.Types {
                                 // int fieldCount = ( int ) reader.ReadPackedInt();
                                 var b = (int)reader.ReadByte();
                                 // For "hkPropertyId", the first byte is "C3", weird.
-                                // The full pattern:
+                                // The full data:
                                 // C3 00 01 12 25 00 1A 16 00 2B 08 00 20
                                 // If we ignore "C3 00", everything works like a charm
                                 if (b >= 0x40) {
@@ -139,7 +135,6 @@ namespace Havoc.IO.Tagfile.Binary.Types {
                                     if (b == 0) {
                                         b = (int)reader.ReadPackedInt();
                                     }
-                                    // b = (int)reader.ReadPackedInt();
                                 }
 
                                 int fieldCount = (int)(b & 0x3F);
@@ -147,40 +142,28 @@ namespace Havoc.IO.Tagfile.Binary.Types {
                                 type.mFields.Capacity = fieldCount;
 
                                 for (int i = 0; i < fieldCount; i++) {
-                                    // Console.WriteLine($"    Pos {reader.BaseStream.Position}");
                                     var nameIdx = (int)reader.ReadPackedInt();
                                     var flags = (HkFieldFlags)reader.ReadPackedInt();
                                     var field = new HkField {
                                         Name = fieldStrings[nameIdx],
-                                        Flags = flags, //(HkFieldFlags)reader.ReadPackedInt(),
+                                        Flags = flags,
                                         ByteOffset = (int)reader.ReadPackedInt(),
                                     };
 
-                                    // if (type.Name == "hkPropertyId") {
-                                    //     Console.WriteLine($"    {nameIdx}, {field.ByteOffset}");
-                                    // }
                                     var fieldTypeIdx = reader.ReadPackedInt();
                                     field.Type = ReadTypeIndex(fieldTypeIdx);
                                     type.mFields.Add(field);
-                                    // Console.WriteLine($"READ: {field.Name}, Fields: {fieldCount}, T: {field.Type?.Name} ({fieldTypeIdx})");
                                     Debug.TypeDef(
                                         $"    {field.Name}: {field.Type?.Name}, Flags: ({(int)field.Flags}) (offset {field.ByteOffset}) (typeidx: {fieldTypeIdx})");
 
                                     if (i == 0 && field.ByteOffset != 0 && field.ByteOffset % 8 != 0) {
                                         Debug.TypeDef("WARNING: Type first field offset % 8 != 0");
                                     }
-                                    // if (type.Name == "hkPropertyId") {
-                                    // Console.WriteLine($"READ: hkPropId: {field.Name}, T idx: ({fieldTypeIdx})");
-                                    // Console.WriteLine($"READ: hkPropId: {field.Name}, T: {field.Type?.Name} ({fieldTypeIdx})");
-                                    // }
-                                    // Console.WriteLine($"    Pos {reader.BaseStream.Position}");
                                 }
                             }
 
                             if ((type.Flags & HkTypeFlags.HasInterfaces) != 0) {
-                                // Console.WriteLine($"    Pos {reader.BaseStream.Position}");
                                 int interfaceCount = (int)reader.ReadPackedInt();
-                                // Console.WriteLine($"{type.Name} ({interfaceCount})");
 
                                 type.mInterfaces.Capacity = interfaceCount;
                                 for (int i = 0; i < interfaceCount; i++) {
@@ -189,13 +172,7 @@ namespace Havoc.IO.Tagfile.Binary.Types {
                                         Flags = (int)reader.ReadPackedInt()
                                     };
                                     type.mInterfaces.Add(itfce);
-
-                                    // Console.WriteLine($"    [Interface] {itfce.Type.Name}: ({itfce.Flags})");
-                                    // Console.WriteLine($"    Pos {reader.BaseStream.Position}");
                                 }
-                                // if (type.Name == "hkPropertyId") {
-                                // Console.WriteLine($"Pos {reader.BaseStream.Position}");
-                                // }
                             }
                         }
 

@@ -63,10 +63,10 @@ namespace Havoc.IO.Tagfile.Xml.V3
 
         public void WriteAllTypes( XmlWriter writer ) {
             var i = 0;
-            // Console.WriteLine("XML: Write types " + TypeCompendium.Count);
+            Debug.WriteProcess("XML: Write types " + TypeCompendium.Count);
             foreach (var type in TypeCompendium) {
                 
-                // Console.WriteLine($"{i} XML: Write type " + type + $", name: {type.Name}");
+                Debug.WriteProcess($"{i} XML: Write type " + type + $", name: {type.Name}");
                 i++;
                 WriteType( writer, type );
             }

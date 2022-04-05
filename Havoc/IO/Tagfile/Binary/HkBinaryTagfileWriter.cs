@@ -121,9 +121,9 @@ namespace Havoc.IO.Tagfile.Binary
                         mWriter.Write( GetTypeIndex( type ) );
                         mWriter.Write( positions.Count );
 
-                        Debug.WriteProcess($"WritePTCH: {type.Name} ({positions.Count})");
+                        // Debug.Temporary($"WritePTCH: {GetTypeIndex( type )} {type.Name} ({positions.Count})");
                         foreach (long position in positions.OrderBy(x => x)) {
-                            Debug.WriteProcess($"WritePTCH:  real: {position} = {mDataOffset} + {(position - mDataOffset)}");
+                            // Debug.Temporary($"WritePTCH: offset {position - mDataOffset}; real: {position} = {mDataOffset} + {(position - mDataOffset)}");
                             mWriter.Write( ( uint ) ( position - mDataOffset ) );
                         }
                     }
@@ -344,7 +344,7 @@ namespace Havoc.IO.Tagfile.Binary
                     Debug.WriteProcess($"Write Class: {obj.Type.Name}");
                     foreach (var (fieldType, fieldObject) in obj.GetValue<HkClass, IReadOnlyDictionary<HkField, IHkObject>>()) {
                         Debug.WriteProcessIndent += 1;
-                        Debug.WriteProcess($"^-{fieldType.Name} ({fieldType.Type.Name})");
+                        // Debug.WriteProcess($"^-{fieldType.Name} ({fieldType.Type.Name})");
                         AddItemsRecursively( fieldObject );
                         Debug.WriteProcessIndent -= 1;
                     }

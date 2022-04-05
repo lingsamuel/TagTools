@@ -18,15 +18,15 @@ namespace Havoc.Cli {
         private static void RMain(string[] args) {
             Debug.DebugLevel = Debug.DebugInfoType.ReadProcess |
                                // Debug.DebugInfoType.WriteProcess |
-                               Debug.DebugInfoType.TypeDef |
+                               // Debug.DebugInfoType.TypeDef |
                                Debug.DebugInfoType.Temporary;
 
             var skeleton =
-                @"D:\Steam\steamapps\common\ELDEN RING\Game\dsanime\c2120-behbnd\GR\data\INTERROOT_win64\action\c2120\Export\c2120.hkx";
-            var compendium = "";
+                @"D:\Steam\steamapps\common\ELDEN RING\Game\chr\c0000-behbnd\GR\data\INTERROOT_win64\action\c0000\Export\Behaviors\c0000.hkx";
+            var compendium = @"";
 
             Read(skeleton, compendium,
-                @"D:\Steam\steamapps\common\ELDEN RING\Game\dsanime\output\" + Path.GetFileName(skeleton));
+                @"D:\Steam\steamapps\common\ELDEN RING\Game\dsanime\output\" + Path.GetFileName(skeleton) + ".beh");
             // Read(skeleton);
         }
 
