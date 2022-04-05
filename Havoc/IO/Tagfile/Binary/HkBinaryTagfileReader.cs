@@ -477,7 +477,7 @@ namespace Havoc.IO.Tagfile.Binary
                     case HkTypeFormat.Ptr: {
                         var item = ReadItemIndex();
 
-                        if (item == null || item.Count != 1) {
+                        if (item == null || item.Count == 0) {
                             return new HkPtr(type, null);
                         }
                         return new HkPtr( type, item?[0] );
