@@ -21,8 +21,8 @@ namespace Havoc.IO.Tagfile.Binary
         private long mDataOffset;
         private List<Item> mItems;
         private List<HkType> mTypes;
-        private Dictionary<HkType, uint[]> mPatches;
-        private Dictionary<HkType, int> mCurrentPatches = new Dictionary<HkType, int>();
+        private Dictionary<HkType, uint[]> mPatches = new ();
+        private Dictionary<HkType, int> mCurrentPatches = new ();
 
         private HkBinaryTagfileReader( Stream stream, string compendium, bool leaveOpen )
         {
@@ -166,7 +166,7 @@ namespace Havoc.IO.Tagfile.Binary
                     }
 
                     case "PTCH":
-                        ReadPatchSection(subSection);
+                        // ReadPatchSection(subSection);
                         break;
 
                     default:
@@ -358,7 +358,7 @@ namespace Havoc.IO.Tagfile.Binary
                 Count = mTag.mReader.ReadInt32();
             }
 
-            private HkType Type { get; }
+            public HkType Type { get; }
             private long Position { get; }
             private int Count { get; }
 

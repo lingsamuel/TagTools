@@ -71,13 +71,13 @@ namespace Havoc.IO.Tagfile.Binary
             {
                 mDataOffset = mStream.Position;
 
-                Debug.Temporary($"WRITE: items {mItems.Count}");
+                Debug.WriteProcess($"WRITE: items {mItems.Count}");
                 foreach ( var item in mItems )
                 {
                     mWriter.WriteAlignmentPadding( item.Type.Alignment );
 
                     item.Position = mStream.Position;
-                    Debug.Temporary($"WRITE:   objects {item.Objects.Count}");
+                    Debug.WriteProcess($"WRITE:   objects {item.Objects.Count}");
                     foreach ( var obj in item.Objects )
                         WriteObject( obj );
                 }
