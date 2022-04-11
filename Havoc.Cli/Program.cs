@@ -16,7 +16,7 @@ namespace Havoc.Cli {
             HkBinaryTagfileWriter.Write(dest + ".2018.hkx", obj, HkSdkVersion.V20180100);
         }
 
-        private static void Main(string[] args) {
+        private static void DMain(string[] args) {
             Debug.DebugLevel =
                 // Debug.DebugInfoType.ReadProcess |
                 // Debug.DebugInfoType.TypeDef |
@@ -56,7 +56,7 @@ namespace Havoc.Cli {
             // Read(skeleton);
         }
 
-        private static void RMain(string[] args) {
+        private static void Main(string[] args) {
             if (args.Length <= 0) {
                 Console.WriteLine(@"Havoc CLI v0.2.0 -- Read HKX V2018 and convert to V2016
 Usage:
