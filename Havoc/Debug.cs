@@ -22,8 +22,9 @@ namespace Havoc {
             Log(DebugInfoType.Temporary, format, args);
         }
 
+        public static int ReadProcessIndent = 0;
         public static void ReadProcess(string format, params object[] args) {
-            Log(DebugInfoType.ReadProcess, format, args);
+            Log(DebugInfoType.ReadProcess, new string(' ', 2* ReadProcessIndent) + format, args);
         }
 
         public static int WriteProcessIndent = 0;

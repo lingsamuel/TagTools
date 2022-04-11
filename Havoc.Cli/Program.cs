@@ -16,25 +16,47 @@ namespace Havoc.Cli {
             HkBinaryTagfileWriter.Write(dest + ".2018.hkx", obj, HkSdkVersion.V20180100);
         }
 
-        private static void DMain(string[] args) {
+        private static void Main(string[] args) {
             Debug.DebugLevel =
-                Debug.DebugInfoType.ReadProcess |
-                // Debug.DebugInfoType.WriteProcess |
-                Debug.DebugInfoType.TypeDef |
+                // Debug.DebugInfoType.ReadProcess |
+                // Debug.DebugInfoType.TypeDef |
+                Debug.DebugInfoType.WriteProcess |
                 Debug.DebugInfoType.Temporary
                 ;
 
-            var skeleton =
-                @"D:\Steam\steamapps\common\ELDEN RING\Game\chr\c0000-behbnd\GR\data\INTERROOT_win64\action\c0000\Export\Behaviors\c0000.hkx";
-            // @"D:\Steam\steamapps\common\ELDEN RING\Game\dsanime\output\c0000.hkx.beh.2018.hkx";
-            var compendium = @"";
+            var first = true;
+            
+            if (first) {
+                var skeleton =
+                    @"D:\Steam\steamapps\common\ELDEN RING\Game\chr\c0000-behbnd\GR\data\INTERROOT_win64\action\c0000\Export\Behaviors\c0000.hkx";
+                var compendium = @"";
+                Read(skeleton, compendium,
+                    @"D:\Steam\steamapps\common\ELDEN RING\Game\dsanime\output\" + Path.GetFileName(skeleton) + ".beh");
+            }
 
-            Read(skeleton, compendium,
-                @"D:\Steam\steamapps\common\ELDEN RING\Game\dsanime\output\" + Path.GetFileName(skeleton) + ".beh");
+            // return;
+            Debug.DebugLevel =
+                Debug.DebugInfoType.ReadProcess |
+                // Debug.DebugInfoType.TypeDef |
+                // Debug.DebugInfoType.WriteProcess |
+                Debug.DebugInfoType.Temporary
+                ;
+            if (!first) {
+                // var skeleton = @"D:\Steam\steamapps\common\ELDEN RING\Game\dsanime\output\c0000.hkx.beh.2018.hkx";
+                // var compendium = @"";
+                // Read(skeleton, compendium,
+                //     @"D:\Steam\steamapps\common\ELDEN RING\Game\dsanime\output\" + Path.GetFileName(skeleton) +
+                //     ".reread.beh");
+                var skeleton = @"D:\Steam\steamapps\common\ELDEN RING\Game\dsanime\output\c0000.hkx.beh.2018.hkx.reread.beh.2018.hkx";
+                var compendium = @"";
+                Read(skeleton, compendium,
+                    @"D:\Steam\steamapps\common\ELDEN RING\Game\dsanime\output\" + Path.GetFileName(skeleton) +
+                    ".reread2.beh");
+            }
             // Read(skeleton);
         }
 
-        private static void Main(string[] args) {
+        private static void RMain(string[] args) {
             if (args.Length <= 0) {
                 Console.WriteLine(@"Havoc CLI v0.2.0 -- Read HKX V2018 and convert to V2016
 Usage:

@@ -140,9 +140,9 @@ namespace Havoc.IO.Tagfile.Binary
 
                 for (int i = 0; i < count; i++) {
                     var offset = mReader.ReadUInt32();
-                    // if (count < 10) {
-                    //     Debug.ReadProcess($"PTCH:   offset {offset}");
-                    // }
+                    if (count < 10) {
+                        Debug.ReadProcess($"PTCH:   offset {offset}");
+                    }
                     mPatches[type][i] = offset;
                 }
             }
@@ -361,6 +361,7 @@ namespace Havoc.IO.Tagfile.Binary
             public HkType Type { get; }
             private long Position { get; }
             private int Count { get; }
+            public bool IsArray = false;
 
             public IReadOnlyList<IHkObject> Objects
             {
@@ -379,22 +380,54 @@ namespace Havoc.IO.Tagfile.Binary
                     return;
 
                 mObjects = new List<IHkObject>( Count );
-                for ( int i = 0; i < Count; i++ )
-                    mObjects.Add( ReadObject( Type, Position + i * Type.ByteSize ) );
+                if (objIdx >= 40000000 && Count > 1 && Type.ToString() != "char") {
+                    Debug.ReadProcess($"read item objects {Type}, length: {Count}");
+                }
+
+                for (int i = 0; i < Count; i++) {
+                    var patchedOffset = Position + i * Type.ByteSize;
+                    // if (mTag.mPatches.ContainsKey(Type)) {
+                    //     if (!mTag.mCurrentPatches.ContainsKey(Type)) {
+                    //         mTag.mCurrentPatches[Type] = 0;
+                    //     }
+                    //
+                    //     var itemIdx = mTag.mCurrentPatches[Type];
+                    //     mTag.mCurrentPatches[Type] += 1;
+                    //     if (itemIdx < mTag.mPatches[Type].Length) {
+                    //         // patchedOffset = mTag.mDataOffset + mTag.mPatches[Type][itemIdx];
+                    //     }
+                    // }
+
+                    if (IsArray && (Type.ToString() == "hkStringPtr" || Type.IsPtr)) {
+                        patchedOffset = Position + i * 4; // FIXME: hacky solution for array
+                    }
+                    
+                    if (objIdx >= 40000000 && Type.ToString() != "char") {
+                        Debug.ReadProcess($"read item obj idx {i} of type {Type}({Type.ByteSize}) (parent: {Type.ParentType}), isPtr? {Type.IsPtr}");
+                    }
+
+                    Debug.ReadProcessIndent ++;
+                    mObjects.Add( ReadObject( Type, patchedOffset ) );
+                    Debug.ReadProcessIndent --;
+                }
             }
 
             private static Dictionary<string, bool> InfoLogged = new();
-            private IHkObject ReadObject( HkType type, long offset )
-            {
+            private static int objIdx = -1;
+            private IHkObject ReadObject( HkType type, long offset ) {
+                objIdx++;
                 mTag.mStream.Seek( offset, SeekOrigin.Begin );
 
+                if (type.ToString() != "char" && objIdx >= 40000000) {
+                    Debug.ReadProcess($"Read object index {objIdx} type {type}/{type.Format} offset {offset}, pos {mTag.mReader.BaseStream.Position}");
+                }
                 var info = Convert.ToString(type.FormatInfo, 2).PadLeft(24, '0');
                 if (!InfoLogged.ContainsKey(type.Name + info) && type.FormatInfo > 0b00001000) {
                     InfoLogged[type.Name + info] = true;
                     // Debug.Temporary($"Type {type.Name} has format {type.Format} (info: {Convert.ToString(type.FormatInfo, 2)}), flag {type.Flags}");
-                    Debug.TypeDef($"Type {type.Name.PadRight(16, ' ')} {info} Format {type.Format }");
+                    // Debug.TypeDef($"Type {type.Name.PadRight(16, ' ')} {info} Format {type.Format }");
                     if (type.Format == HkTypeFormat.String) {
-                        Debug.TypeDef($"  IsFixedSize {type.IsFixedSize}");
+                        // Debug.TypeDef($"  IsFixedSize {type.IsFixedSize}");
                     }
                 }
 
@@ -447,17 +480,23 @@ namespace Havoc.IO.Tagfile.Binary
                         else
                         {
                             var item = ReadItemIndex();
-                            if ( item != null )
+                            if ( item != null && item.Count > 0)
                             {
                                 var stringBuilder = new StringBuilder( item.Count - 1 );
                                 for ( int i = 0; i < item.Count - 1; i++ )
                                     stringBuilder.Append( ( char ) ( byte ) item[ i ].Value );
 
                                 value = stringBuilder.ToString();
+                                if (objIdx >= 40000000) {
+                                    Debug.ReadProcess($"Read object index {objIdx} string: {value}, pos {mTag.mReader.BaseStream.Position}");
+                                }
                             }
                             else
                             {
                                 value = null;
+                                if (objIdx >= 40000000) {
+                                    Debug.ReadProcess($"Read object index {objIdx} but null");
+                                }
                             }
                         }
 
@@ -514,29 +553,22 @@ namespace Havoc.IO.Tagfile.Binary
                             type.AllFields.ToDictionary( x => x,
                                 x => {
                                     var patchedOffset = offset + x.ByteOffset;
-
-                                    if (mTag.mPatches.ContainsKey(x.Type)) {
-                                        if (!mTag.mCurrentPatches.ContainsKey(x.Type)) {
-                                            mTag.mCurrentPatches[x.Type] = 0;
-                                        }
-
-                                        var itemIdx = mTag.mCurrentPatches[x.Type];
-                                        mTag.mCurrentPatches[x.Type] += 1;
-                                        if (itemIdx < mTag.mPatches[x.Type].Length) {
-                                            patchedOffset = mTag.mDataOffset + mTag.mPatches[x.Type][itemIdx];
-                                        }
-                                    }
-
                                     return ReadObject(x.Type, patchedOffset);
                                 }) );
                     }
 
                     case HkTypeFormat.Array:
                     {
+                        if (objIdx >= 40000000) {
+                            Debug.ReadProcess($"read array, is fixed size? {type.IsFixedSize}");
+                        }
                         if ( !type.IsFixedSize )
-                            return new HkArray( type, ReadItemIndex() );
+                            return new HkArray( type, ReadItemIndex(true) );
 
                         var array = new IHkObject[ type.FixedSize ];
+                        if (objIdx >= 40000000) {
+                            Debug.ReadProcess($"read array, length: {array.Length}");
+                        }
                         for ( int i = 0; i < array.Length; i++ )
                             array[ i ] = ReadObject( type.SubType, offset + i * type.SubType.ByteSize );
 
@@ -547,7 +579,7 @@ namespace Havoc.IO.Tagfile.Binary
                         throw new ArgumentOutOfRangeException( nameof( type.Format ) );
                 }
 
-                IReadOnlyList<IHkObject> ReadItemIndex()
+                IReadOnlyList<IHkObject> ReadItemIndex(bool isArray = false)
                 {
                     int index = mTag.mReader.ReadInt32();
                     if (index < 0) {
@@ -555,6 +587,12 @@ namespace Havoc.IO.Tagfile.Binary
                     } else if (index >= mTag.mItems.Count) {
                         throw new Exception($"ReadItemIndex: {index} > {mTag.mItems.Count}");
                     }
+
+                    if (objIdx >= 40000000) {
+                        Debug.ReadProcess($"ReadItemIndex: {index}");
+                    }
+
+                    mTag.mItems[index].IsArray = true;
                     return index == 0 ? null : mTag.mItems[ index ].Objects;
                 }
             }

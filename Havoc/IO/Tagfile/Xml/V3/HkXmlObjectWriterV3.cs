@@ -174,14 +174,15 @@ namespace Havoc.IO.Tagfile.Xml.V3
             if ( obj == null || mObjects.Contains( obj ) || obj.Value == null )
                 return;
 
-            Debug.WriteProcess($"Add Obj {obj.Type.Format}");
+            // Debug.WriteProcess($"Add Obj {obj.Type.Format}");
             switch ( obj.Type.Format )
             {
-                case HkTypeFormat.Ptr:
+                case HkTypeFormat.Ptr: {
                     var ptrObject = obj.GetValue<HkPtr, IHkObject>();
                     AddObjectsRecursively( ptrObject );
                     mObjects.Add( ptrObject );
                     break;
+                }
 
                 case HkTypeFormat.Class:
                 {
@@ -189,8 +190,10 @@ namespace Havoc.IO.Tagfile.Xml.V3
                         mObjects.Add( obj );
 
                     foreach (var (field, fieldObject) in obj.GetValue<HkClass, IReadOnlyDictionary<HkField, IHkObject>>()) {
-                        Debug.WriteProcess($"Add field {field.Name}");
+                        Debug.WriteProcessIndent++;
+                        // Debug.WriteProcess($"Add field {field.Name}");
                         AddObjectsRecursively( fieldObject );
+                        Debug.WriteProcessIndent--;
                     }
 
                     break;
@@ -198,9 +201,12 @@ namespace Havoc.IO.Tagfile.Xml.V3
 
                 case HkTypeFormat.Array:
                 {
-                    Debug.WriteProcess($"Add array {((HkArray)obj).Value.Count}");
-                    foreach ( var childObject in obj.GetValue<HkArray, IReadOnlyList<IHkObject>>() )
+                    Debug.WriteProcessIndent++;
+                    // Debug.WriteProcess($"Add array {((HkArray)obj).Value.Count}");
+                    foreach (var childObject in obj.GetValue<HkArray, IReadOnlyList<IHkObject>>()) {
                         AddObjectsRecursively( childObject );
+                    }
+                    Debug.WriteProcessIndent--;
 
                     break;
                 }
